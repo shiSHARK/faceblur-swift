@@ -1,0 +1,4 @@
+#!/bin/sh
+# SPDX-License-Identifier: Apache-2.0
+# Data-admission guard: every commit about to be pushed; git passes the refs on stdin (config/data-admission/README.md).
+exec sh "$(git rev-parse --show-toplevel)/config/data-admission/check.sh" pre-push

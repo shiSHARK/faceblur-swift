@@ -1,0 +1,2 @@
+# path<TAB>sha256<TAB>DATA_REGISTER id. One row per admitted non-code or binary file, mirrored from an
+# approved row of the internal DATA_REGISTER (legal + security approval). Paths relative to the repository root.

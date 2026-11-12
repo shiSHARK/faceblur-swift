@@ -1,0 +1,20 @@
+#!/bin/sh
+# SPDX-License-Identifier: Apache-2.0
+# 1. Data-admission guard: staged content, identity, gitleaks --staged (config/data-admission/README.md).
+# 2. No internal process IDs or workspace paths in the STAGED files or their paths (scripts/check-internal-ids.py).
+#    The staged copies are exported to a temporary directory, so the working tree cannot hide or add a match.
+#    Paths are passed NUL-separated, so names with spaces are checked like any other.
+set -eu
+top=$(git rev-parse --show-toplevel)
+cd "$top"
+sh config/data-admission/check.sh pre-commit
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT INT TERM
+git diff --cached --name-only -z --diff-filter=ACMRT > "$tmp/staged"
+[ -s "$tmp/staged" ] || exit 0
+mkdir "$tmp/index"
+# Each path once: a staged baseline would otherwise be exported twice, which checkout-index refuses.
+{ cat "$tmp/staged"; git ls-files -z -- scripts/internal-id-baseline.txt; } | sort -zu \
+    | git checkout-index -z --stdin --prefix="$tmp/index/"
+cd "$tmp/index"
+xargs -0 python3 -I "$top/scripts/check-internal-ids.py" --files < "$tmp/staged"

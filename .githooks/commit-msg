@@ -1,0 +1,8 @@
+#!/bin/sh
+# SPDX-License-Identifier: Apache-2.0
+# 1. Data-admission guard: commit message + identity (config/data-admission/README.md).
+# 2. No internal process IDs or workspace paths in the message (scripts/check-internal-ids.py).
+set -eu
+top=$(git rev-parse --show-toplevel)
+sh "$top/config/data-admission/check.sh" commit-msg "$1"
+python3 -I "$top/scripts/check-internal-ids.py" --message "$1"

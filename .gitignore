@@ -1,0 +1,46 @@
+# Swift Package Manager / Xcode build outputs
+.build/
+.swiftpm/
+DerivedData/
+xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+/Packages/
+
+# Locally built binary artifacts (released XCFramework zips are attached to GitHub Releases, not committed)
+# ADR 0001: the local development XCFramework lives in Binaries/.
+/Binaries/
+*.xcframework/
+*.xcframework.zip
+
+# Model files are never committed to this repository (the app supplies its own model); this catches stray copies.
+*.onnx
+
+# Python bytecode (the data-admission guard is a Python script)
+__pycache__/
+*.pyc
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Secrets and signing material
+*.p12
+*.pem
+*.mobileprovision
+*.p8
+*.cer
+*.keychain
+*.keychain-db
+**/Local.xcconfig
+*.keystore
+*.gpg
+*.asc
+.env
+.env.*
+!.env.example
+
+# Logs
+/logs/
+*.log
