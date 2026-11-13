@@ -7,11 +7,18 @@ struct PhotoReview: View {
     let photo: PhotoInfo
     let faces: [DetectedFace]
     let items: [MaskItem]
+    /// What a screen reader says for the photo, and the summary it reads after it.
+    let label: String
+    let value: String
 
     var body: some View {
+        // The label sits on the image itself, so the accessibility frame is the photo and not the outlines drawn over
+        // it; the outlines are hidden from the screen reader (the summary says the same in words).
         Image(uiImage: photo.preview)
             .resizable()
             .scaledToFit()
+            .accessibilityLabel(label)
+            .accessibilityValue(value)
             .overlay {
                 GeometryReader { proxy in
                     let scale = proxy.size.width / CGFloat(max(photo.width, 1))
@@ -26,6 +33,7 @@ struct PhotoReview: View {
                         }
                     }
                 }
+                .accessibilityHidden(true)
             }
             .clipped() // a mask near the border is expanded beyond the photo; show only the part inside it
     }
@@ -39,6 +47,7 @@ struct PhotoReview: View {
             shape(ellipse).stroke(.white, style: StrokeStyle(lineWidth: 2.5, dash: dash))
             Text(label)
                 .font(.caption.bold())
+                .dynamicTypeSize(...DynamicTypeSize.xxxLarge) // at the largest sizes the label would cover the face
                 .padding(.horizontal, 4)
                 .background(.black)
                 .foregroundStyle(.white)

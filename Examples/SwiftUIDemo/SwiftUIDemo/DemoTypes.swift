@@ -98,6 +98,20 @@ struct MaskItem: Identifiable, Equatable, Sendable {
     }
 }
 
+/// Where the screen reader's focus goes after the screen changed under it (a control disappeared, a new section
+/// appeared). The view moves the accessibility focus; the view model only names the target.
+enum FocusTarget: Hashable, Sendable {
+    case modelHeading, photoHeading, reviewHeading, masksHeading, savedHeading, failure
+    /// The title of a mask row, by item id.
+    case maskTitle(Int)
+}
+
+/// One request to move the focus. The serial makes a repeated request for the same target a new value.
+struct FocusRequest: Equatable, Sendable {
+    let target: FocusTarget
+    let serial: Int
+}
+
 /// The work the view model asks for. The real implementation uses only the public FaceBlur API; tests use a fake.
 protocol MaskingEngine: Sendable {
     /// Hashes the file. Throws ``DemoFailure``.

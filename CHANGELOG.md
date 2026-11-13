@@ -6,6 +6,10 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). The project follows
 [Semantic Versioning](https://semver.org/); the API is not stable before 1.0, and breaking changes are listed here.
 
+## Repository updates after 0.1.0 (no new artifacts)
+
+- SwiftUI demo accessibility pass: the photo stays on screen while masks are edited, moves and resizes are announced and the screen reader focus follows the change, buttons stack at the largest text sizes, no duplicate status text, clearer headings and button names.
+
 ## [0.1.0] - Unreleased
 
 First release. It has the same version number as the Maven artifact `io.github.shishark:faceblur`, whose library is

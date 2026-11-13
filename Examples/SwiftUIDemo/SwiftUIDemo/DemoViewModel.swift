@@ -20,7 +20,14 @@ final class DemoViewModel {
     private(set) var faces: [DetectedFace] = []
     private(set) var items: [MaskItem] = []
     private(set) var jpeg: EncodedJPEG?
-    private(set) var status = ""
+    /// The sentence for the status line and for the screen reader. Every assignment bumps `statusSerial`, so the
+    /// same sentence set twice (a second "cannot move any further") is announced twice.
+    private(set) var status = "" {
+        didSet { statusSerial &+= 1 }
+    }
+    private(set) var statusSerial = 0
+    /// Where the screen reader's focus should go after the last change (nil until the first change).
+    private(set) var focusRequest: FocusRequest?
     /// Bound to the system file exporter.
     var isExporting = false
 
@@ -31,6 +38,7 @@ final class DemoViewModel {
     private var generation = 0
     private let undoLimit = 50
     private var hasReview = false
+    private var focusSerial = 0
 
     init(engine: MaskingEngine) {
         self.engine = engine
@@ -58,6 +66,17 @@ final class DemoViewModel {
     var activeMaskCount: Int { items.filter(\.isOn).count }
     var canUndo: Bool { !undoStack.isEmpty }
     var canSave: Bool { stage == .review }
+    /// True when a section on the screen already shows the status sentence, so the status line under the content
+    /// would repeat it (and the screen reader would read it twice). The sentence is still announced.
+    var statusRepeatsScreenText: Bool {
+        switch stage {
+        case .hashingModel, .loadingModel, .preparingPhoto, .detecting, .failed: true
+        case .confirmModel: status == Copy.confirmHint
+        case .choosePhoto: loadedModelName.map { status == Copy.modelLoaded(name: $0) } ?? false
+        case .review: status == summary
+        case .chooseModel, .saving, .saved: false
+        }
+    }
     var failure: DemoFailure? {
         if case let .failed(f) = stage { return f }
         return nil
@@ -103,6 +122,7 @@ final class DemoViewModel {
                 loadedModelName = candidate.fileName
                 stage = .choosePhoto
                 status = Copy.modelLoaded(name: candidate.fileName)
+                focus(.photoHeading)
             } catch {
                 self.candidate = nil
                 fail(Self.failure(from: error))
@@ -116,6 +136,7 @@ final class DemoViewModel {
         candidate = nil
         stage = modelLoaded ? .choosePhoto : .chooseModel
         status = Copy.cancelled
+        focus(modelLoaded ? .photoHeading : .modelHeading)
     }
 
     // MARK: Photo step
@@ -148,6 +169,7 @@ final class DemoViewModel {
                 hasReview = true
                 stage = .review
                 status = summary
+                focus(.reviewHeading)
             } catch is CancellationError {
                 await engine.discardPhoto()
                 resetPhotoState()
@@ -190,6 +212,8 @@ final class DemoViewModel {
                                                      radiusX: side / 2, radiusY: side / 2, isEllipse: true),
                               isOn: true))
         status = summary
+        // The new row is at the end of the list, below the button that was just pressed: take the focus to it.
+        focus(.maskTitle(id))
         refreshGeometry(id)
     }
 
@@ -198,7 +222,7 @@ final class DemoViewModel {
     func move(_ id: Int, _ direction: Direction) {
         guard let photo else { return }
         let step = Double(min(photo.width, photo.height)) * 0.02
-        edit(id) { box in
+        let outcome = edit(id) { box in
             var moved = box
             switch direction {
             case .left: moved.left -= step; moved.right -= step
@@ -208,17 +232,40 @@ final class DemoViewModel {
             }
             return Self.clamp(moved, width: photo.width, height: photo.height)
         }
+        guard let number = maskNumber(id) else { return }
+        switch outcome {
+        case .notEditable: break
+        case .unchanged:
+            let action = switch direction {
+            case .left: "move left"
+            case .right: "move right"
+            case .up: "move up"
+            case .down: "move down"
+            }
+            status = Copy.maskAtLimit(number: number, action: action)
+        case let .changed(box):
+            status = Copy.maskMoved(number: number, x: Self.percent(box.centerX, of: photo.width),
+                                    y: Self.percent(box.centerY, of: photo.height))
+        }
     }
 
     func resize(_ id: Int, larger: Bool) {
         guard let photo else { return }
         let factor = larger ? 1.1 : 1 / 1.1
         let minimum = max(16.0, Double(min(photo.width, photo.height)) * 0.02)
-        edit(id) { box in
+        let outcome = edit(id) { box in
             let w = max(minimum, box.width * factor), h = max(minimum, box.height * factor)
             let scaled = PixelRect(left: box.centerX - w / 2, top: box.centerY - h / 2,
                                    right: box.centerX + w / 2, bottom: box.centerY + h / 2)
             return Self.clamp(scaled, width: photo.width, height: photo.height)
+        }
+        guard let number = maskNumber(id) else { return }
+        switch outcome {
+        case .notEditable: break
+        case .unchanged: status = Copy.maskAtLimit(number: number, action: larger ? "get larger" : "get smaller")
+        case let .changed(box):
+            status = Copy.maskResized(number: number, width: Self.percent(box.width, of: photo.width),
+                                      height: Self.percent(box.height, of: photo.height))
         }
     }
 
@@ -227,6 +274,7 @@ final class DemoViewModel {
         pushUndo()
         items.remove(at: index)
         status = summary
+        focus(.masksHeading) // the focused Delete button is gone
     }
 
     func undo() {
@@ -235,14 +283,27 @@ final class DemoViewModel {
         status = summary
     }
 
-    private func edit(_ id: Int, _ change: (PixelRect) -> PixelRect) {
+    private enum EditOutcome { case notEditable, unchanged, changed(PixelRect) }
+
+    private func edit(_ id: Int, _ change: (PixelRect) -> PixelRect) -> EditOutcome {
         guard stage == .review, let index = items.firstIndex(where: { $0.id == id }),
-              case let .added(box) = items[index].kind else { return }
+              case let .added(box) = items[index].kind else { return .notEditable }
         let changed = change(box)
-        guard changed != box else { return }
+        guard changed != box else { return .unchanged }
         pushUndo()
         items[index].kind = .added(box: changed)
         refreshGeometry(id)
+        return .changed(changed)
+    }
+
+    /// The number shown for a mask: its place in the list, counted from 1.
+    private func maskNumber(_ id: Int) -> Int? {
+        items.firstIndex(where: { $0.id == id }).map { $0 + 1 }
+    }
+
+    /// `value` as a whole percent of `extent` pixels.
+    static func percent(_ value: Double, of extent: Int) -> Int {
+        Int((value / Double(max(extent, 1)) * 100).rounded())
     }
 
     /// Asks the engine for the real mask of an added box. A later edit of the same mask wins over an older answer.
@@ -298,6 +359,7 @@ final class DemoViewModel {
                 } else {
                     status = Copy.masksApplied(masks: out.maskCount)
                 }
+                focus(.savedHeading)
                 isExporting = true
             } catch is CancellationError {
                 finishCancelled(backTo: .review)
@@ -313,11 +375,14 @@ final class DemoViewModel {
         case .success: status = Copy.saved(masks: jpeg?.maskCount ?? 0)
         case .failure: status = Copy.notSaved
         }
+        focus(.savedHeading) // the exporter covered the screen: bring the focus back to the result
     }
 
     /// The exporter was closed without a choice.
     func exportCancelled() {
-        if stage == .saved { status = Copy.notSaved }
+        guard stage == .saved else { return }
+        status = Copy.notSaved
+        focus(.savedHeading)
     }
 
     func presentExporterAgain() {
@@ -335,13 +400,20 @@ final class DemoViewModel {
         resetPhotoState()
         stage = modelLoaded ? .choosePhoto : .chooseModel
         status = modelLoaded ? Copy.modelLoaded(name: loadedModelName ?? "") : ""
+        focus(modelLoaded ? .photoHeading : .modelHeading) // the focused button is gone
     }
 
     func dismissFailure() {
         guard case .failed = stage else { return }
-        if hasReview { stage = .review; status = summary; return }
+        if hasReview {
+            stage = .review
+            status = summary
+            focus(.reviewHeading)
+            return
+        }
         stage = modelLoaded ? .choosePhoto : .chooseModel
         status = ""
+        focus(modelLoaded ? .photoHeading : .modelHeading)
     }
 
     private func resetPhotoState() {
@@ -368,11 +440,22 @@ final class DemoViewModel {
     private func finishCancelled(backTo target: Stage) {
         stage = target
         status = Copy.cancelled
+        switch target {
+        case .review: focus(.reviewHeading)
+        case .choosePhoto: focus(.photoHeading)
+        default: focus(.modelHeading)
+        }
     }
 
     private func fail(_ failure: DemoFailure) {
         stage = .failed(failure)
         status = Copy.message(for: failure)
+        focus(.failure)
+    }
+
+    private func focus(_ target: FocusTarget) {
+        focusSerial += 1
+        focusRequest = FocusRequest(target: target, serial: focusSerial)
     }
 
     private static func failure(from error: any Error) -> DemoFailure {

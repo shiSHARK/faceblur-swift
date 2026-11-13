@@ -37,6 +37,19 @@ file that imports it; the rest of the app does not know the library, which is ho
    app deletes that file when the exporter closes and again at the next launch. Besides that staged file (deleted as
    described), the only copy is the file you save.
 
+## Accessibility
+
+- Every control is a button with a text label (at least 44 pt high); the text follows Dynamic Type, side-by-side
+  buttons stack at the largest sizes, and the layout works in dark mode and in landscape.
+- The photo stays on screen while the masks are edited: pinned above the list, beside it in landscape. Moving or
+  resizing a mask is announced ("Mask 2 moved. Centre 52 % from the left, 48 % from the top."), and the screen reader's
+  focus follows what changed (a new mask, the saved photo, an error).
+- Faces and masks differ by outline style and a label (F1, M1), never by colour alone. The photo preview has a
+  description with the face count.
+- `SwiftUIDemoUITests/AccessibilityUITests.swift` checks the pinned photo, the stacked buttons and the system
+  accessibility audit in dark mode and in landscape on a simulator. Speech output is not tested; try the demo with
+  VoiceOver before you rely on it.
+
 ## Privacy
 
 - No network code and no network declarations; no location; no logging; no analytics.

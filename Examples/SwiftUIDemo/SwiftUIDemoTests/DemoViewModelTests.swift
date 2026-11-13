@@ -371,4 +371,190 @@ final class DemoViewModelTests: XCTestCase {
         ]
         XCTAssertEqual(Set(all.map(Copy.message)).count, all.count)
     }
+
+    // MARK: Accessibility: announcements, focus, duplicate status text
+
+    func testMovingAMaskSaysWhereItIsNow() async {
+        let (model, _) = await reviewing()
+        model.addMask()
+        let id = model.items[1].id
+        let before = model.statusSerial
+        model.move(id, .left)
+        XCTAssertEqual(model.status, Copy.maskMoved(number: 2, x: 49, y: 50))
+        XCTAssertEqual(model.status, "Mask 2 moved. Centre 49 % from the left, 50 % from the top.", "98 of 200 px, 50 of 100 px")
+        XCTAssertEqual(model.statusSerial, before + 1, "every move is a new announcement")
+        for _ in 0..<20 { model.move(id, .down) }
+        XCTAssertEqual(model.status, "Mask 2 moved. Centre 49 % from the left, 90 % from the top.",
+                       "stopped at the bottom edge: the 20 px box reaches 100 px, its centre is at 90")
+    }
+
+    func testResizingAMaskSaysTheNewSize() async {
+        let (model, _) = await reviewing()
+        model.addMask()
+        let id = model.items[1].id
+        model.resize(id, larger: true)
+        XCTAssertEqual(model.status, "Mask 2 resized. 11 % of the photo wide, 22 % high.")
+        model.resize(id, larger: false)
+        XCTAssertEqual(model.status, "Mask 2 resized. 10 % of the photo wide, 20 % high.")
+    }
+
+    func testAMoveOrResizeThatChangesNothingSaysSoEveryTime() async {
+        let (model, _) = await reviewing()
+        model.addMask()
+        let id = model.items[1].id
+        for _ in 0..<200 { model.move(id, .left) }
+        XCTAssertEqual(model.status, "Mask 2 cannot move left any further.")
+        let serial = model.statusSerial
+        model.move(id, .left)
+        XCTAssertEqual(model.status, "Mask 2 cannot move left any further.")
+        XCTAssertEqual(model.statusSerial, serial + 1, "the same sentence is announced again")
+        for _ in 0..<400 { model.resize(id, larger: false) }
+        XCTAssertEqual(model.status, "Mask 2 cannot get smaller any further.")
+        for _ in 0..<400 { model.resize(id, larger: true) }
+        XCTAssertEqual(model.status, "Mask 2 cannot get larger any further.")
+        for direction in [DemoViewModel.Direction.right, .up, .down] {
+            for _ in 0..<400 { model.move(id, direction) }
+        }
+        XCTAssertEqual(model.status, "Mask 2 cannot move down any further.")
+    }
+
+    func testEditingADetectedMaskSaysNothing() async {
+        let (model, _) = await reviewing()
+        let status = model.status
+        let serial = model.statusSerial
+        model.move(model.items[0].id, .left)
+        model.resize(model.items[0].id, larger: true)
+        XCTAssertEqual(model.status, status)
+        XCTAssertEqual(model.statusSerial, serial)
+    }
+
+    func testFocusFollowsTheChangeOnTheScreen() async {
+        let (model, _) = await loadedModel()
+        XCTAssertEqual(model.focusRequest?.target, .photoHeading, "the confirm buttons are gone after loading")
+        model.photoPicked(Data([1]))
+        await waitFor(model, .review)
+        XCTAssertEqual(model.focusRequest?.target, .reviewHeading)
+        model.addMask()
+        XCTAssertEqual(model.focusRequest?.target, .maskTitle(model.items[1].id), "the new row is below the Add button")
+        let id = model.items[1].id
+        model.deleteAdded(id)
+        XCTAssertEqual(model.focusRequest?.target, .masksHeading, "the Delete button is gone")
+        model.save()
+        await waitFor(model, .saved)
+        XCTAssertEqual(model.focusRequest?.target, .savedHeading)
+        let serial = model.focusRequest?.serial
+        model.exportCancelled()
+        XCTAssertEqual(model.focusRequest?.target, .savedHeading, "after the exporter closes")
+        XCTAssertNotEqual(model.focusRequest?.serial, serial, "the same target is a new request")
+        model.startOver()
+        XCTAssertEqual(model.focusRequest?.target, .photoHeading, "the Choose another photo button is gone")
+    }
+
+    func testFocusGoesToTheFailureAndBackWhenItIsDismissed() async {
+        let (model, engine) = await loadedModel()
+        await engine.configure { $0.prepareError = DemoFailure.photoUnreadable }
+        model.photoPicked(Data([1]))
+        await waitFor(model, .failed(.photoUnreadable))
+        XCTAssertEqual(model.focusRequest?.target, .failure)
+        model.dismissFailure()
+        XCTAssertEqual(model.focusRequest?.target, .photoHeading)
+
+        let (fresh, freshEngine) = make()
+        await freshEngine.configure { $0.inspectError = DemoFailure.modelFileUnreadable }
+        fresh.modelFilePicked(.success(modelURL))
+        await waitFor(fresh, .failed(.modelFileUnreadable))
+        fresh.dismissFailure()
+        XCTAssertEqual(fresh.focusRequest?.target, .modelHeading)
+    }
+
+    func testDismissingAFailureAfterTheReviewReturnsTheFocusThere() async {
+        let (model, engine) = await reviewing()
+        await engine.configure { $0.saveError = DemoFailure.notEnoughMemory }
+        model.save()
+        await waitFor(model, .failed(.notEnoughMemory))
+        XCTAssertEqual(model.focusRequest?.target, .failure)
+        model.dismissFailure()
+        XCTAssertEqual(model.focusRequest?.target, .reviewHeading)
+    }
+
+    func testCancellingTheConfirmationAndARunReturnsTheFocus() async {
+        let (model, _) = make()
+        model.modelFilePicked(.success(modelURL))
+        await waitFor(model, .confirmModel)
+        model.cancelModelConfirmation()
+        XCTAssertEqual(model.focusRequest?.target, .modelHeading)
+
+        let (loaded, engine) = await loadedModel()
+        await engine.configure { $0.hold = true }
+        loaded.photoPicked(Data([1]))
+        await waitFor(loaded, .detecting)
+        loaded.cancelRun()
+        await waitFor(loaded, .choosePhoto)
+        XCTAssertEqual(loaded.focusRequest?.target, .photoHeading)
+
+        let (reviewed, reviewEngine) = await reviewing()
+        await reviewEngine.configure { $0.hold = true }
+        reviewed.save()
+        await waitFor(reviewed, .saving)
+        reviewed.cancelRun()
+        await waitFor(reviewed, .review)
+        XCTAssertEqual(reviewed.focusRequest?.target, .reviewHeading)
+    }
+
+    func testTheStatusLineAppearsOnlyWhenNoSectionShowsTheSameSentence() async {
+        let (model, engine) = make()
+        XCTAssertFalse(model.statusRepeatsScreenText, "nothing is shown yet")
+        await engine.configure { $0.hold = true }
+        model.modelFilePicked(.success(modelURL))
+        XCTAssertEqual(model.stage, .hashingModel)
+        XCTAssertTrue(model.statusRepeatsScreenText, "the progress row shows it")
+        await waitFor(model, .confirmModel)
+        XCTAssertEqual(model.status, Copy.confirmHint)
+        XCTAssertTrue(model.statusRepeatsScreenText, "the confirmation shows the hint")
+        model.confirmModel()
+        XCTAssertTrue(model.statusRepeatsScreenText, "while the model loads")
+        await waitFor(model, .choosePhoto)
+        XCTAssertTrue(model.statusRepeatsScreenText, "the model section shows the name")
+        model.photoPicked(Data([1]))
+        XCTAssertTrue(model.statusRepeatsScreenText, "preparing and detecting show it")
+        await waitFor(model, .detecting)
+        XCTAssertTrue(model.statusRepeatsScreenText)
+        await engine.release()
+        await waitFor(model, .review)
+        XCTAssertTrue(model.statusRepeatsScreenText, "the summary is shown above the masks")
+        model.addMask()
+        model.toggle(model.items[0].id)
+        XCTAssertTrue(model.statusRepeatsScreenText)
+        let id = model.items[1].id
+        model.move(id, .left)
+        XCTAssertFalse(model.statusRepeatsScreenText, "the move sentence is shown nowhere else")
+        model.save()
+        await waitFor(model, .saved)
+        XCTAssertFalse(model.statusRepeatsScreenText, "Choose where to save is only in the status line")
+        model.exportFinished(.success(URL(fileURLWithPath: "/x")))
+        XCTAssertFalse(model.statusRepeatsScreenText)
+        model.startOver()
+        XCTAssertTrue(model.statusRepeatsScreenText, "the model section shows the name again")
+    }
+
+    func testTheStatusLineShowsAnswersThatNothingElseShows() async {
+        let (model, _) = make()
+        model.modelFilePicked(.success(modelURL))
+        await waitFor(model, .confirmModel)
+        model.cancelModelConfirmation()
+        XCTAssertEqual(model.status, Copy.cancelled)
+        XCTAssertFalse(model.statusRepeatsScreenText)
+
+        let (failing, engine) = make()
+        await engine.configure { $0.inspectError = DemoFailure.modelFileUnreadable }
+        failing.modelFilePicked(.success(modelURL))
+        await waitFor(failing, .failed(.modelFileUnreadable))
+        XCTAssertTrue(failing.statusRepeatsScreenText, "the failure message is shown above the OK button")
+    }
+
+    func testPercentRoundsAndSurvivesAnEmptyExtent() {
+        XCTAssertEqual(DemoViewModel.percent(50, of: 200), 25)
+        XCTAssertEqual(DemoViewModel.percent(1, of: 3), 33)
+        XCTAssertEqual(DemoViewModel.percent(5, of: 0), 500, "an empty extent counts as one pixel, never divides by zero")
+    }
 }

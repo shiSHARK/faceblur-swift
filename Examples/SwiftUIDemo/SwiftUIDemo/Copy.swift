@@ -36,7 +36,7 @@ enum Copy {
     static let right = "Right"
     static let up = "Up"
     static let down = "Down"
-    static let deleteAdded = "Delete this mask"
+    static let savedHeading = "4. Saved photo"
     static let saveWithMasks = "Apply masks and save JPEG"
     static let saveWithoutMasks = "Save JPEG without masks"
     static let saving = "Applying masks and writing the JPEG"
@@ -54,6 +54,14 @@ enum Copy {
         "\(faces) \(faces == 1 ? "face" : "faces") detected, \(masks) \(masks == 1 ? "mask" : "masks") "
             + "will be applied"
     }
+
+    static func deleteAdded(number: Int) -> String { "Delete mask \(number)" }
+    static func centre(x: Int, y: Int) -> String { "Centre \(x) % from the left, \(y) % from the top" }
+    static func maskMoved(number: Int, x: Int, y: Int) -> String { "Mask \(number) moved. \(centre(x: x, y: y))." }
+    static func maskResized(number: Int, width: Int, height: Int) -> String {
+        "Mask \(number) resized. \(width) % of the photo wide, \(height) % high."
+    }
+    static func maskAtLimit(number: Int, action: String) -> String { "Mask \(number) cannot \(action) any further." }
 
     static func modelLoaded(name: String) -> String { "\(Copy.modelLoaded): \(name)" }
     static func saved(masks: Int) -> String { "Saved. \(masks) \(masks == 1 ? "mask" : "masks") applied." }
