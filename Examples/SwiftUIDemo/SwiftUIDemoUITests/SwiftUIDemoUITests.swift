@@ -41,22 +41,6 @@ final class SwiftUIDemoUITests: XCTestCase {
         XCTAssertTrue(element.waitForExistence(timeout: seconds), "missing: \(element) \(message)")
     }
 
-    /// Scrolls until the element is on screen (lazy grids and long lists create their rows on demand).
-    @discardableResult
-    private func reveal(_ element: XCUIElement, in app: XCUIApplication) -> XCUIElement {
-        if element.exists && element.isHittable { return element }
-        for _ in 0..<10 {
-            app.swipeUp()
-            if element.exists && element.isHittable { return element }
-        }
-        for _ in 0..<20 {
-            app.swipeDown()
-            if element.exists && element.isHittable { return element }
-        }
-        XCTFail("cannot scroll to \(element)")
-        return element
-    }
-
     private func waitUntilEnabled(_ element: XCUIElement, _ seconds: TimeInterval = 60) {
         let deadline = Date().addingTimeInterval(seconds)
         while !(element.exists && element.isEnabled) && Date() < deadline { usleep(200_000) }
@@ -93,19 +77,20 @@ final class SwiftUIDemoUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Remove mask 1"].exists)
         shot("04-review")
 
-        reveal(app.buttons["Add a mask"], in: app).tap()
+        app.reveal(app.buttons["Add a mask"]).tap()
         XCTAssertTrue(app.staticTexts["2 masks will be applied"].exists || app.staticTexts["1 face detected, 2 masks will be applied"].exists)
-        reveal(app.buttons["Move mask 2 left"], in: app).tap()
-        reveal(app.buttons["Make mask 2 larger"], in: app).tap()
+        app.reveal(app.buttons["Move mask 2 left"]).tap()
+        app.reveal(app.buttons["Make mask 2 larger"]).tap()
         shot("05-added-mask")
 
-        reveal(app.buttons["Remove mask 1"], in: app).tap()
-        XCTAssertTrue(app.buttons["Restore mask 1"].exists)
-        XCTAssertTrue(app.staticTexts["Off: this area stays uncovered"].exists, "state is also in words")
-        reveal(app.buttons["Undo"], in: app).tap()
-        XCTAssertTrue(app.buttons["Remove mask 1"].exists)
+        app.reveal(app.buttons["Remove mask 1"]).tap()
+        // The status line under the list goes away when it would repeat the summary, so the list may move a little.
+        XCTAssertTrue(app.reveal(app.buttons["Restore mask 1"]).exists)
+        XCTAssertTrue(app.reveal(app.staticTexts["Off: this area stays uncovered"]).exists, "state is also in words")
+        app.reveal(app.buttons["Undo"]).tap()
+        XCTAssertTrue(app.reveal(app.buttons["Remove mask 1"]).exists)
 
-        reveal(app.buttons["Apply masks and save JPEG"], in: app).tap()
+        app.reveal(app.buttons["Apply masks and save JPEG"]).tap()
         wait(app.buttons["Save JPEG"], 90, "saved stage")
         sleep(2)
         shot("06-export-sheet")
@@ -129,13 +114,8 @@ final class SwiftUIDemoUITests: XCTestCase {
         app.buttons["Use this model"].tap()
         wait(app.buttons["Apply masks and save JPEG"], 90, "review")
         shot("08-review-largest-text")
-        reveal(app.buttons["Apply masks and save JPEG"], in: app)
-        try app.performAccessibilityAudit(for: [.contrast, .hitRegion, .elementDetection, .sufficientElementDescription, .trait]) { issue in
-            // Name the element so a finding can be fixed.
-            XCTContext.runActivity(named: "audit: \(issue.compactDescription) | \(issue.element?.label ?? "-") | \(issue.element?.elementType.rawValue ?? 0)") { _ in }
-            // WCAG 2.2 SC 1.4.3 exempts inactive components: a disabled button (Undo with nothing to undo) may be dim.
-            return issue.auditType == .contrast && issue.element?.isEnabled == false
-        }
+        app.reveal(app.buttons["Apply masks and save JPEG"])
+        try app.audit()
     }
 
     /// Loads the model through the confirmation step and picks the newest photo in the real system photo picker.
@@ -198,7 +178,7 @@ final class SwiftUIDemoUITests: XCTestCase {
         record("after pick", root)
         XCTAssertEqual(AppContainer.leftovers(in: root, bundleID: Self.bundleID), [], "after the picker delivered the photo")
 
-        reveal(app.buttons["Apply masks and save JPEG"], in: app).tap()
+        app.reveal(app.buttons["Apply masks and save JPEG"]).tap()
         wait(app.buttons["Save JPEG"], 90, "saved stage")
         sleep(2)
         record("exporter open", root)
@@ -222,7 +202,7 @@ final class SwiftUIDemoUITests: XCTestCase {
         shot("12-saved")
 
         // Start over, as a person would: nothing stays either.
-        reveal(app.buttons["Choose another photo"], in: app).tap()
+        app.reveal(app.buttons["Choose another photo"]).tap()
         sleep(1)
         record("after start over", root)
         XCTAssertEqual(AppContainer.leftovers(in: root, bundleID: Self.bundleID), [], "after starting over")
