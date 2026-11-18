@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Repository updates after 0.1.0 (no new artifacts)
 
+- Documentation: new "Known issue" section in the README with the cause of the App Store validation messages ITMS-90360 / ITMS-90530 for `onnxruntime.framework` and a build-phase workaround.
 - SwiftUI demo accessibility pass: the photo stays on screen while masks are edited, moves and resizes are announced and the screen reader focus follows the change, buttons stack at the largest text sizes, no duplicate status text, clearer headings and button names.
 
 ## [0.1.0] - Unreleased
