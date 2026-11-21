@@ -127,12 +127,13 @@ final class SwiftUIDemoUITests: XCTestCase {
         photoButton.tap()
         sleep(3)
         shot("09-system-photo-picker")
-        // The simulator's library holds only what the test run added with simctl addmedia.
-        // The photo added with simctl addmedia is the newest, which the picker lists first in its grid (below the
-        // header and the privacy notice).
-        let images = app.images
-        _ = images.firstMatch.waitForExistence(timeout: 10)
-        let grid = images.allElementsBoundByIndex.filter { $0.isHittable && $0.frame.minY > 300 }
+        // The photo added with simctl addmedia is the newest, which the picker lists first (top left) in its grid. The
+        // grid cells are the images with the accessibility identifier "PXGGridLayout-Info" (iOS 27 labels them
+        // "Photo, <date>"); the picker takes a while to load them, and the header and the privacy notice above the
+        // grid are images or other elements of different identifiers, so a position on screen is not used.
+        let cells = app.images.matching(identifier: "PXGGridLayout-Info")
+        _ = cells.firstMatch.waitForExistence(timeout: 30)
+        let grid = cells.allElementsBoundByIndex.filter { $0.isHittable }
         let newest = grid.min { ($0.frame.minY, $0.frame.minX) < ($1.frame.minY, $1.frame.minX) }
         XCTAssertNotNil(newest, "the picker grid shows the added photo")
         newest?.tap()
