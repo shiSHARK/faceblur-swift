@@ -26,6 +26,7 @@ Bug-fix release; the public API is unchanged. It has the same version number as 
 
 ### Documentation
 
+- New "Known issue" section in the README on failing fresh Swift Package Manager resolution.
 - New "Known issue" section in the README with the cause of the App Store validation messages ITMS-90360 / ITMS-90530 for `onnxruntime.framework` and a build-phase workaround.
 
 ## [0.1.0] - Unreleased

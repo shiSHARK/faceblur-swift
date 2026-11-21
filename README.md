@@ -58,6 +58,15 @@ Kotlin Multiplatform apps do not use the `FaceBlur` product: they depend on the 
 `io.github.shishark:faceblur` and add only the product `FaceBlurOrtShim`. See the
 [Kotlin Multiplatform guide](https://github.com/shiSHARK/faceblur/blob/main/docs/guides/kmp-ios.md).
 
+## Known issue: fresh package resolution fails
+
+Since mid-November 2026, a fresh Swift Package Manager resolve of faceblur-swift fails. The ONNX Runtime wrapper
+package it depends on (`github.com/microsoft/onnxruntime-swift-package-manager`, 1.20.0) is no longer served by GitHub,
+and the host of the ONNX Runtime binary (`download.onnxruntime.ai`) currently does not present a valid certificate for
+its name. Projects that already resolved the package keep working from their existing package caches: keep
+`Package.resolved` and do not clear the SwiftPM or Xcode caches. No workaround is published yet; this section will be
+updated. The Android and Kotlin Multiplatform library is not affected by the Swift package resolution.
+
 ## Known issue: App Store validation reports `onnxruntime.framework`
 
 **Symptom.** Validating or uploading an app that uses the `FaceBlur` product in App Store Connect can report ITMS-90360 and
