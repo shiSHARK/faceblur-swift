@@ -65,7 +65,7 @@ package it depends on (`github.com/microsoft/onnxruntime-swift-package-manager`,
 and the host of the ONNX Runtime binary (`download.onnxruntime.ai`) currently does not present a valid certificate for
 its name. Projects that already resolved the package keep working from their existing package caches: keep
 `Package.resolved` and do not clear the SwiftPM or Xcode caches. No workaround is published yet; this section will be
-updated. The Android and Kotlin Multiplatform library is not affected by the Swift package resolution.
+updated. Android apps that use the Maven Central artifact are not affected.
 
 ## Known issue: App Store validation reports `onnxruntime.framework`
 
