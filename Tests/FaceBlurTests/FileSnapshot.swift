@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
-// The same file is in Tests/FaceBlurTests and Tests/FaceBlurOnnxRuntimeTests (the two test bundles share no target);
-// keep both copies identical.
+// The same file is in Tests/FaceBlurTests, Tests/FaceBlurOnnxRuntimeTests and Tests/FaceBlurBlockingGlueTests (the
+// test bundles share no target); keep the copies identical.
 import Foundation
 import XCTest
 

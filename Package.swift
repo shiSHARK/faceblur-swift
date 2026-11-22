@@ -76,6 +76,12 @@ let package = Package(
             name: "FaceBlurTests",
             dependencies: ["FaceBlur", "FaceBlurCore"]
         ),
+        // Its own bundle: the library takes one ONNX Runtime glue factory per process, and this bundle registers a
+        // test glue that blocks inside Swift (the other bundles register the production glue).
+        .testTarget(
+            name: "FaceBlurBlockingGlueTests",
+            dependencies: ["FaceBlur", "FaceBlurOnnxRuntime", "FaceBlurCore"]
+        ),
     ],
     swiftLanguageModes: [.v6]
 )
