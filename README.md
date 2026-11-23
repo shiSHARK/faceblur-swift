@@ -43,11 +43,11 @@ iOS 18 or newer, and a Swift 6.2 toolchain (Xcode with Swift 6.2). The package d
 framework.
 
 In Xcode: File > Add Package Dependencies, enter `https://github.com/shiSHARK/faceblur-swift` and choose "Up to Next
-Minor Version" from `0.1.0`. In a `Package.swift`:
+Minor Version" from `0.1.1`. In a `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/shiSHARK/faceblur-swift", .upToNextMinor(from: "0.1.0")),
+    .package(url: "https://github.com/shiSHARK/faceblur-swift", .upToNextMinor(from: "0.1.1")),
 ],
 targets: [
     .target(name: "MyApp", dependencies: [.product(name: "FaceBlur", package: "faceblur-swift")]),

@@ -6,7 +6,7 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). The project follows
 [Semantic Versioning](https://semver.org/); the API is not stable before 1.0, and breaking changes are listed here.
 
-## [0.1.1] - Unreleased
+## [0.1.1] - 2026-11-23
 
 Bug-fix release; the public API is unchanged. It has the same version number as the Maven artifact
 `io.github.shishark:faceblur`.
@@ -29,7 +29,7 @@ Bug-fix release; the public API is unchanged. It has the same version number as 
 - New "Known issue" section in the README on failing fresh Swift Package Manager resolution.
 - New "Known issue" section in the README with the cause of the App Store validation messages ITMS-90360 / ITMS-90530 for `onnxruntime.framework` and a build-phase workaround.
 
-## [0.1.0] - Unreleased
+## [0.1.0] - 2026-11-12
 
 First release. It has the same version number as the Maven artifact `io.github.shishark:faceblur`, whose library is
 packaged here as the `FaceBlurCore` framework.
