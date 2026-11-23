@@ -22,8 +22,8 @@ let faceBlurCore: Target =
     ? .binaryTarget(name: "FaceBlurCore", path: "Binaries/FaceBlurCore.xcframework")
     : .binaryTarget(
         name: "FaceBlurCore",
-        url: "https://github.com/shiSHARK/faceblur-swift/releases/download/0.1.0/FaceBlurCore.xcframework.zip",
-        checksum: "3bc9232179ae576baec934f489ca780dc571a71bb1c4e253d363b7035817677e"
+        url: "https://github.com/shiSHARK/faceblur-swift/releases/download/0.1.1/FaceBlurCore.xcframework.zip",
+        checksum: "82c98040ceba86b8c58037e90c14b7d52a969d0610990b2454a4ef746b5b0728"
     )
 
 let package = Package(
