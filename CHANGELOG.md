@@ -6,10 +6,27 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). The project follows
 [Semantic Versioning](https://semver.org/); the API is not stable before 1.0, and breaking changes are listed here.
 
-## Repository updates after 0.1.0 (no new artifacts)
+## [0.1.1] - Unreleased
 
-- Documentation: new "Known issue" section in the README with the cause of the App Store validation messages ITMS-90360 / ITMS-90530 for `onnxruntime.framework` and a build-phase workaround.
+Bug-fix release; the public API is unchanged. It has the same version number as the Maven artifact
+`io.github.shishark:faceblur`.
+
+### Fixed
+
+- A model run that never returns, or a model that never finishes loading, no longer blocks a masking call or the
+  creation of a `FaceMasker`, also on iOS, where a run cannot be stopped. A call still waiting at its time limit throws
+  `modelOutputInvalid(findings: ["RUN_TIMEOUT"])` (creating a masker: `modelRejected(findings: ["TIMEOUT"])`) with
+  nothing written, and the next call opens a new runtime session first. Such runs are bounded for the whole process:
+  once the bound is reached, every `FaceMasker` in the process fails at once with the same errors until one of them
+  returns.
+
+### Changed
+
 - SwiftUI demo accessibility pass: the photo stays on screen while masks are edited, moves and resizes are announced and the screen reader focus follows the change, buttons stack at the largest text sizes, no duplicate status text, clearer headings and button names.
+
+### Documentation
+
+- New "Known issue" section in the README with the cause of the App Store validation messages ITMS-90360 / ITMS-90530 for `onnxruntime.framework` and a build-phase workaround.
 
 ## [0.1.0] - Unreleased
 

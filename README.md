@@ -135,6 +135,10 @@ func maskPhoto(modelURL: URL, source: URL, output: URL) async throws -> Int {
 
 The calls run on a private queue, never on the main thread. Cancel with Swift task cancellation. After any error, or
 after `CancellationError`, treat the photo as not masked and never publish the original instead.
+A model run that never returns does not hold a call: every run and every session creation has a time limit, and the call
+then throws `modelOutputInvalid(findings: ["RUN_TIMEOUT"])` (creating a masker: `modelRejected(findings: ["TIMEOUT"])`)
+with nothing written, also on iOS, where a run cannot be stopped. Such a run keeps a thread and its session's memory
+until it returns; their number is bounded for the whole process.
 
 ## Guides
 
