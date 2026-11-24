@@ -20,15 +20,24 @@ import XCTest
 /// The model and the fixture are not part of the package; their paths come from the test environment
 /// (TEST_RUNNER_FACEBLUR_MODEL: the pinned YuNet file; TEST_RUNNER_FACEBLUR_TESTDATA: the faceblur `testdata` folder
 /// with the registered public fixtures). The simulator reads them from the host.
+///
+/// Coverage limit: the tests drive the library's `FaceBlurCore.FaceMasker` and map the error with `FaceMaskError.from`
+/// (the function the facade uses), not the public async `FaceBlur.FaceMasker`: the facade refuses every glue but its own,
+/// so it cannot be driven with this test glue without a test seam. The facade's queue layer is therefore not covered in
+/// the stuck case.
 final class BlockingGlueTests: XCTestCase {
     private static let yunetSha256 = "8f2383e4dd3cfbb4553ea8718107fc0423210dc964f9f4280604804ed2552fa4"
     private static let fixture = "pd/pd-p01-s025-x00938-y00610.png"
     /// The smallest per-pass limit; the library takes the larger of this and twenty times the contract run.
     private static let minimumLimitMillis = 2_000.0
     private static let limitFactor = 20.0
-    /// The library's own margin for "ended at the limit".
+    /// The library's own margin for "ended at the limit". It has to absorb the work before the pass starts and the
+    /// garbage collection after the call (184 to 282 ms of it on the gate), so it is the likeliest source of a flaky
+    /// upper bound on a loaded machine.
     private static let marginMillis = 1_000.0
-    /// Allowance for the part of the contract run that the glue does not see (input fill, hand-over, decoding).
+    /// Allowance for the part of the contract run that the glue does not see (input fill, hand-over, decoding). It is
+    /// multiplied by the limit factor, so once the contract run is above this value the upper bound loosens by up to
+    /// about two seconds.
     private static let contractSlackMillis = 50.0
 
     private static let registered: Bool = {
@@ -264,6 +273,7 @@ final class BlockingGlueTests: XCTestCase {
         normalMasker.close()
         let normal = try Data(contentsOf: URL(fileURLWithPath: dir + "/normal.jpg"))
         try FileManager.default.removeItem(atPath: dir + "/normal.jpg")
+        XCTAssertNotEqual(normal, input, "a normal masker changes the file, so \"source unchanged\" below is not vacuous")
         BlockingGlueFactory.shared.reset()
 
         let (masker, stuck) = try stuckMasker(model)

@@ -8,8 +8,6 @@ import Foundation
 final class StuckRun: @unchecked Sendable {
     /// Signalled by the test (teardown at the latest) to let the stuck run go on.
     let release = DispatchSemaphore(value: 0)
-    /// Signalled when the stuck run is inside Swift, waiting on ``release``.
-    let entered = DispatchSemaphore(value: 0)
     /// Signalled when the glue's `close()` has finished.
     let closed = DispatchSemaphore(value: 0)
 
@@ -77,7 +75,6 @@ final class BlockingGlue: NSObject, OnnxBridge, @unchecked Sendable {
         }
         stuck.countRun(runs)
         if runs >= 2 {
-            stuck.entered.signal()
             // Inside Swift, holding this glue's lock, no CPU.
             _ = stuck.release.wait(timeout: .now() + Self.safetyStopSeconds)
         }

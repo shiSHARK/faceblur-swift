@@ -51,19 +51,32 @@ extension XCUIApplication {
         return element
     }
 
-    /// The system accessibility audit. Two cases are not findings of the app and are skipped:
-    /// - a disabled control (WCAG 2.2 SC 1.4.3 exempts inactive components; Undo with nothing to undo may be dim);
-    /// - text that the pinned photo or the system's home indicator cuts: the audit measures the overlapping bar
-    ///   or indicator, not the text (the same text passes once it is scrolled into the free area).
+    /// The system accessibility audit. Only contrast findings are ever skipped, and each skip is written to the test
+    /// log as "audit waived: <reason> | <label>", so none is silent. The three reasons, one line each:
+    /// - disabled control: WCAG 2.2 SC 1.4.3 exempts inactive components (seen: "Choose a photo" before a model is
+    ///   chosen, "Undo" with nothing to undo); a dim label there is the platform's disabled style, not a text colour
+    ///   the app picked, so there is nothing to fix;
+    /// - bottom edge: the audit measures the system home indicator that overlaps the element, not the text (the same
+    ///   text passes once it is scrolled into the free area);
+    /// - under the pinned photo: the audit measures the photo bar that overlaps the element, not the text (same).
     func audit() throws {
         try performAccessibilityAudit(for: [.contrast, .hitRegion, .elementDetection, .sufficientElementDescription, .trait]) { issue in
             // Name the element so a finding can be fixed.
             XCTContext.runActivity(named: "audit: \(issue.compactDescription) | \(issue.element?.label ?? "-") | \(issue.element?.elementType.rawValue ?? 0)") { _ in }
             guard issue.auditType == .contrast, let element = issue.element else { return false }
-            if !element.isEnabled { return true }
             let screen = self.windows.firstMatch.frame
-            if element.frame.maxY > screen.maxY - 34 && element.frame.minY < screen.maxY { return true }
-            return element.frame.intersects(self.pinnedPhotoArea)
+            let reason: String
+            if !element.isEnabled {
+                reason = "disabled control"
+            } else if element.frame.maxY > screen.maxY - 34 && element.frame.minY < screen.maxY {
+                reason = "bottom edge"
+            } else if element.frame.intersects(self.pinnedPhotoArea) {
+                reason = "under the pinned photo"
+            } else {
+                return false
+            }
+            XCTContext.runActivity(named: "audit waived: \(reason) | \(element.label)") { _ in }
+            return true
         }
     }
 }
