@@ -259,7 +259,11 @@ final class BlockingGlueTests: XCTestCase {
                        "the same file as a normal masker")
         XCTAssertEqual(try names(dir), ["in.jpg", "next.jpg"], "no temporary file after the next call")
 
+        let beforeRelease = FileSnapshot.take(extra: [dir])
         releaseAndExpectTheLibraryClosesTheGlue(stuck)
+        XCTAssertEqual(try names(dir), ["in.jpg", "next.jpg"], "the abandoned pass's late return wrote no file")
+        XCTAssertEqual(FileSnapshot.difference(beforeRelease, FileSnapshot.take(extra: [dir])), [],
+                       "nothing written after the stuck run was released")
         masker.close()
         try FileSnapshot.assertSeesHostFolders(extra: [dir])
     }
@@ -292,7 +296,13 @@ final class BlockingGlueTests: XCTestCase {
                        "the same file as a normal masker")
         XCTAssertEqual(try names(dir), ["in.jpg"], "no temporary file after the next call")
 
+        let beforeRelease = FileSnapshot.take(extra: [dir])
         releaseAndExpectTheLibraryClosesTheGlue(stuck)
+        XCTAssertEqual(try names(dir), ["in.jpg"], "the abandoned pass's late return left no temporary file")
+        XCTAssertEqual(try Data(contentsOf: URL(fileURLWithPath: dir + "/in.jpg")), normal,
+                       "the source still holds the normal masker's output after the release")
+        XCTAssertEqual(FileSnapshot.difference(beforeRelease, FileSnapshot.take(extra: [dir])), [],
+                       "nothing written after the stuck run was released")
         masker.close()
     }
 }
