@@ -6,6 +6,19 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). The project follows
 [Semantic Versioning](https://semver.org/); the API is not stable before 1.0, and breaking changes are listed here.
 
+## [0.1.2] - Unreleased
+
+Patch release; the public API is unchanged. It has the same version number as the Maven artifact
+`io.github.shishark:faceblur`.
+
+### Changed
+
+- Masking is faster; the output is unchanged.
+- Two detection passes run at once on two runtime sessions (2 threads per session by default); the results are the
+  same. The run time limit covers both passes, and a failure in either one fails the call with the existing errors.
+- Masks are composited smallest first (stable for masks of equal size), so the bigger mask is on top where masks
+  overlap.
+
 ## [0.1.1] - 2026-11-23
 
 Bug-fix release; the public API is unchanged. It has the same version number as the Maven artifact
