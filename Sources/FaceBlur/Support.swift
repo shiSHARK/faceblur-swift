@@ -70,7 +70,7 @@ enum SecurityScope {
 /// Process-wide registration of the ONNX Runtime glue and the library version check (ADR 0011 decision 4).
 enum Runtime {
     /// The version of the library this facade was built for (`FaceBlurIos.libraryVersion`).
-    static let expectedLibraryVersion = "0.1.1"
+    static let expectedLibraryVersion = "0.1.2"
 
     /// Run once, lazily, before the first `FaceMasker` is created.
     private static let ready: Bool = decide(

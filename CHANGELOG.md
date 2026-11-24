@@ -6,7 +6,7 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). The project follows
 [Semantic Versioning](https://semver.org/); the API is not stable before 1.0, and breaking changes are listed here.
 
-## [0.1.2] - Unreleased
+## [0.1.2] - 2026-11-24
 
 Patch release; the public API is unchanged. It has the same version number as the Maven artifact
 `io.github.shishark:faceblur`.
